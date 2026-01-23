@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Heart, MessageCircle, Search, Upload } from 'lucide-react';
 import { Suspense } from 'react';
-import Loading from './loading';
 
 export default function LandingPage() {
   return (
@@ -213,6 +212,4 @@ export default function LandingPage() {
   );
 }
 
-export function Loading() {
-  return null;
-}
+// Loading handled by `app/loading.tsx`
