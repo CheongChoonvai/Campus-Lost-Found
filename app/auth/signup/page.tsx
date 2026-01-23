@@ -19,6 +19,8 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [showConfirmScreen, setShowConfirmScreen] = useState(false);
+  const [signedUpEmail, setSignedUpEmail] = useState('');
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,12 +62,14 @@ export default function SignUpPage() {
           description: signUpError.message,
           variant: 'destructive',
         });
-      } else if (data.user) {
+      } else {
+        // Show confirmation UI instructing the user to check their email
+        setSignedUpEmail(email);
+        setShowConfirmScreen(true);
         toast({
           title: 'Success',
-          description: 'Account created successfully! Redirecting...',
+          description: 'Account created. Check your email to confirm your account.',
         });
-        router.push('/dashboard');
       }
     } catch (error) {
       toast({
@@ -77,6 +81,49 @@ export default function SignUpPage() {
       setLoading(false);
     }
   };
+
+  if (showConfirmScreen) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold mx-auto mb-4">
+              L&F
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">Confirm your email</h1>
+            <p className="mt-2 text-muted-foreground">We sent a confirmation link to <strong>{signedUpEmail}</strong>. Please open your inbox (Gmail) and click the link to activate your account.</p>
+          </div>
+
+          <Card>
+            <CardContent>
+              <div className="space-y-4">
+                <Button asChild>
+                  <a href="https://mail.google.com/" target="_blank" rel="noreferrer" className="w-full text-center">Open Gmail</a>
+                </Button>
+
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={async () => {
+                    toast({
+                      title: 'Resend',
+                      description: 'If you did not receive the email, check spam or try signing in to request a new link.',
+                    });
+                  }}
+                >
+                  Resend confirmation instructions
+                </Button>
+
+                <Button className="w-full" onClick={() => router.push('/auth/login')}>
+                  I confirmed — Go to Sign In
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
