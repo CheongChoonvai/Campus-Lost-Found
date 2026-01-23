@@ -59,17 +59,30 @@ export default function ReportPage() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    // Client-side validations
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      toast({
+        title: 'Error',
+        description: 'File is too large. Max size is 10MB',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
-
+      // Include contentType to ensure proper handling
       const { error: uploadError } = await supabase.storage
         .from('item-photos')
-        .upload(filePath, file);
+        .upload(filePath, file, { contentType: file.type });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        throw uploadError;
+      }
 
       const { data } = supabase.storage.from('item-photos').getPublicUrl(filePath);
       setPhotoUrl(data.publicUrl);
@@ -80,7 +93,7 @@ export default function ReportPage() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to upload photo',
+        description: error?.message || 'Failed to upload photo',
         variant: 'destructive',
       });
     } finally {
