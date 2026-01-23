@@ -57,7 +57,11 @@ export default function ReportPage() {
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file) return;
+    if (!user) {
+      toast({ title: 'Error', description: 'You must be signed in to upload', variant: 'destructive' });
+      return;
+    }
 
     // Client-side validations
     const maxSize = 10 * 1024 * 1024; // 10MB
@@ -72,30 +76,24 @@ export default function ReportPage() {
 
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
-      // Include contentType to ensure proper handling
-      const { error: uploadError } = await supabase.storage
-        .from('item-photos')
-        .upload(filePath, file, { contentType: file.type });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data } = supabase.storage.from('item-photos').getPublicUrl(filePath);
-      setPhotoUrl(data.publicUrl);
-      toast({
-        title: 'Success',
-        description: 'Photo uploaded successfully',
+      // POST the file to the server API that uses the service role key to upload securely
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'x-user-id': user.id,
+          'x-file-name': file.name,
+          // content-type will be set automatically by the browser for Blobs when using body as file
+        },
+        body: file,
       });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error?.message || 'Failed to upload photo',
-        variant: 'destructive',
-      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || 'Upload failed');
+
+      setPhotoUrl(json.publicUrl);
+      toast({ title: 'Success', description: 'Photo uploaded successfully' });
+    } catch (err: any) {
+      toast({ title: 'Upload failed', description: err?.message || 'Unknown error', variant: 'destructive' });
     } finally {
       setUploading(false);
     }
@@ -180,28 +178,6 @@ export default function ReportPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Item Type */}
-              <div className="space-y-2">
-                <Label>Item Type</Label>
-                <div className="flex gap-4">
-                  {['lost', 'found'].map((type) => (
-                    <label key={type} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="item_type"
-                        value={type}
-                        checked={formData.item_type === type}
-                        onChange={(e) =>
-                          setFormData({ ...formData, item_type: e.target.value as 'lost' | 'found' })
-                        }
-                        className="rounded-full"
-                      />
-                      <span className="capitalize font-medium">{type}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
               {/* Title */}
               <div className="space-y-2">
                 <Label htmlFor="title">Item Title *</Label>
