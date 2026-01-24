@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, MapPin, Calendar, MessageSquare, Trash2, Edit } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, MessageSquare, Trash2, Edit, User } from 'lucide-react';
 import Link from 'next/link';
+import Brand from '@/components/site/brand';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function ItemDetailPage() {
@@ -21,6 +22,7 @@ export default function ItemDetailPage() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [ownerName, setOwnerName] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -43,6 +45,16 @@ export default function ItemDetailPage() {
         if (error) throw error;
         setItem(data);
         setIsOwner(data.user_id === user.id);
+
+        // Fetch owner profile name
+        if (data.user_id) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', data.user_id)
+            .single();
+          setOwnerName(profile?.full_name || null);
+        }
       } catch (error) {
         console.error('Error:', error);
         toast({
@@ -91,6 +103,7 @@ export default function ItemDetailPage() {
     if (!item || !user) return;
 
     try {
+      const initial = `Hi — I'm interested in this item titled "${item.title}". Can we chat?`;
       const { data, error } = await supabase
         .from('contacts')
         .insert([
@@ -98,7 +111,7 @@ export default function ItemDetailPage() {
             item_id: item.id,
             sender_id: user.id,
             recipient_id: item.user_id,
-            message: `I'm interested in this ${item.item_type} item.`,
+            message: initial,
           },
         ])
         .select();
@@ -106,14 +119,41 @@ export default function ItemDetailPage() {
       if (error) throw error;
 
       toast({
-        title: 'Success',
-        description: 'Message sent! Check your messages for a response.',
+        title: 'Message sent',
+        description: 'You can continue the conversation in Messages.',
       });
       router.push('/dashboard/messages');
-    } catch (error) {
+    } catch (err) {
       toast({
         title: 'Error',
-        description: 'Failed to send message',
+        description: 'Failed to start conversation',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleMarkReturned = async () => {
+    if (!item) return;
+    try {
+      const resolvedAt = new Date().toISOString();
+      const { error } = await supabase
+        .from('items')
+        .update({ status: 'resolved', resolved_at: resolvedAt })
+        .eq('id', item.id);
+
+      if (error) throw error;
+
+      setItem({ ...item, status: 'resolved', resolved_at: resolvedAt });
+
+      const actionText = item.item_type === 'lost' ? 'returned' : 'claimed';
+      toast({
+        title: 'Item updated',
+        description: `Item marked as ${actionText}.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update item status',
         variant: 'destructive',
       });
     }
@@ -143,11 +183,8 @@ export default function ItemDetailPage() {
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-                L&F
-              </div>
-              <span className="text-lg font-bold text-foreground">Campus Lost & Found</span>
+            <div>
+              <Brand />
             </div>
           </div>
         </div>
@@ -184,15 +221,21 @@ export default function ItemDetailPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold text-foreground">{item.title}</h1>
-                <Badge
-                  className={`mt-2 ${
-                    item.item_type === 'lost'
+                <div className="flex gap-2 mt-2">
+                  <Badge
+                    className={`${item.item_type === 'lost'
                       ? 'bg-destructive'
                       : 'bg-accent'
-                  }`}
-                >
-                  {item.item_type === 'lost' ? 'Lost' : 'Found'}
-                </Badge>
+                      }`}
+                  >
+                    {item.item_type === 'lost' ? 'Lost' : 'Found'}
+                  </Badge>
+                  {item.status === 'resolved' && (
+                    <Badge className="bg-green-600 hover:bg-green-700">
+                      Resolved ✓
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -210,6 +253,12 @@ export default function ItemDetailPage() {
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span>{formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}</span>
               </div>
+              {ownerName && (
+                <div className="flex items-center gap-2 text-foreground">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span>Posted by {ownerName}</span>
+                </div>
+              )}
             </div>
 
             {/* Description */}
@@ -232,6 +281,11 @@ export default function ItemDetailPage() {
                       Edit Item
                     </Link>
                   </Button>
+                  {item.status !== 'resolved' && (
+                    <Button onClick={handleMarkReturned} className="flex-1">
+                      {item.item_type === 'lost' ? 'Mark as Returned' : 'Mark as Claimed'}
+                    </Button>
+                  )}
                   <Button
                     variant="destructive"
                     onClick={handleDelete}

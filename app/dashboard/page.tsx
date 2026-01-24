@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LogOut, Plus, Search } from 'lucide-react';
+import { LogOut, Plus, Search, MessageCircle } from 'lucide-react';
+import Brand from '@/components/site/brand';
 import { ItemGrid } from '@/components/items/item-grid';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
@@ -21,6 +22,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [itemType, setItemType] = useState<string>('all');
   const [category, setCategory] = useState<string>('all');
+  const [status, setStatus] = useState<string>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const searchParams = useSearchParams();
 
@@ -44,7 +46,7 @@ export default function DashboardPage() {
       let query = supabase
         .from('items')
         .select('*')
-        .eq('status', 'active')
+        .eq('status', status)
         .order('created_at', { ascending: false });
 
       if (itemType !== 'all') {
@@ -64,7 +66,31 @@ export default function DashboardPage() {
       const { data, error } = await query;
 
       if (error) throw error;
-      setItems(data || []);
+      const itemsData = data || [];
+
+      // Fetch author display names from `profiles` table (if present)
+      const uniqueUserIds = Array.from(new Set(itemsData.map((it: any) => it.user_id)));
+      if (uniqueUserIds.length > 0) {
+        try {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', uniqueUserIds);
+
+          const profileMap = new Map((profiles || []).map((p: any) => [p.id, p.full_name]));
+
+          // Attach posterName to items
+          for (const it of itemsData) {
+            it.posterName = profileMap.get(it.user_id) || null;
+          }
+        } catch (err) {
+          // ignore — profiles table may not exist yet
+          // eslint-disable-next-line no-console
+          console.warn('Could not load profiles:', err);
+        }
+      }
+
+      setItems(itemsData);
     } catch (error) {
       console.error('Error fetching items:', error);
       toast({
@@ -82,7 +108,7 @@ export default function DashboardPage() {
       fetchItems();
     }, 500);
     return () => clearTimeout(timer);
-  }, [itemType, category, searchQuery]);
+  }, [itemType, category, status, searchQuery]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -107,13 +133,16 @@ export default function DashboardPage() {
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-                L&F
-              </div>
-              <span className="text-lg font-bold text-foreground">Campus Lost & Found</span>
+            <div>
+              <Brand />
             </div>
             <div className="flex items-center gap-4">
+              <Button asChild variant="outline">
+                <a href="/dashboard/messages">
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Messages
+                </a>
+              </Button>
               <Button asChild>
                 <a href="/dashboard/report">
                   <Plus className="h-4 w-4 mr-2" />
@@ -149,7 +178,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="text-sm font-medium text-foreground block mb-2">
                   Item Type
@@ -162,6 +191,21 @@ export default function DashboardPage() {
                     <SelectItem value="all">All Items</SelectItem>
                     <SelectItem value="lost">Lost Items</SelectItem>
                     <SelectItem value="found">Found Items</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-2">
+                  Status
+                </label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active Items</SelectItem>
+                    <SelectItem value="resolved">Resolved Items</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

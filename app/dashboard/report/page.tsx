@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Upload } from 'lucide-react';
 import Link from 'next/link';
+import Brand from '@/components/site/brand';
 
 export default function ReportPage() {
   const router = useRouter();
@@ -152,11 +153,8 @@ export default function ReportPage() {
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-                L&F
-              </div>
-              <span className="text-lg font-bold text-foreground">Campus Lost & Found</span>
+            <div>
+              <Brand />
             </div>
           </div>
         </div>

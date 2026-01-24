@@ -70,6 +70,21 @@ export default function SignUpPage() {
           title: 'Success',
           description: 'Account created. Check your email to confirm your account.',
         });
+
+        // If Supabase returned a user id (may be present depending on confirmation flow),
+        // try to create a profile row so we can display the user's full name in the app.
+        try {
+          const userId = (data as any)?.user?.id;
+          if (userId) {
+            await supabase.from('profiles').upsert([
+              { id: userId, full_name: fullName },
+            ]);
+          }
+        } catch (err) {
+          // Non-fatal: profile creation can be handled later (e.g. on first sign-in or via DB trigger)
+          // eslint-disable-next-line no-console
+          console.warn('Could not create profile row:', err);
+        }
       }
     } catch (error) {
       toast({

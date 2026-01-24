@@ -16,6 +16,7 @@ interface Item {
   item_type: 'lost' | 'found';
   photo_url: string | null;
   created_at: string;
+  posterName?: string | null;
 }
 
 interface ItemGridProps {
@@ -55,6 +56,9 @@ export function ItemGrid({ items }: ItemGridProps) {
             <div>
               <h3 className="font-semibold text-foreground line-clamp-2">{item.title}</h3>
               <p className="text-xs text-muted-foreground mt-1">{item.category}</p>
+              {item.posterName ? (
+                <p className="text-xs text-muted-foreground mt-1">Posted by {item.posterName}</p>
+              ) : null}
             </div>
           </CardHeader>
 
