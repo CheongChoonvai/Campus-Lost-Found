@@ -97,6 +97,39 @@ export default function SignUpPage() {
     }
   };
 
+  const handleResend = async () => {
+    if (!signedUpEmail) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: signedUpEmail,
+      });
+
+      if (error) {
+        toast({
+          title: 'Error',
+          description: error.message,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Success',
+          description: 'Confirmation email resent. Please check your inbox.',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to resend email',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (showConfirmScreen) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
@@ -119,14 +152,10 @@ export default function SignUpPage() {
                 <Button
                   className="w-full"
                   variant="outline"
-                  onClick={async () => {
-                    toast({
-                      title: 'Resend',
-                      description: 'If you did not receive the email, check spam or try signing in to request a new link.',
-                    });
-                  }}
+                  onClick={handleResend}
+                  disabled={loading}
                 >
-                  Resend confirmation instructions
+                  {loading ? 'Resending...' : 'Resend confirmation instructions'}
                 </Button>
 
                 <Button className="w-full" onClick={() => router.push('/auth/login')}>

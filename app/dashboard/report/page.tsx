@@ -103,7 +103,7 @@ export default function ReportPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.title || !formData.description || !formData.category || !formData.location) {
+    if (!formData.title || !formData.description || !formData.category || !formData.location || !formData.item_type) {
       toast({
         title: 'Error',
         description: 'Please fill in all required fields',
@@ -176,6 +176,23 @@ export default function ReportPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Item Type */}
+              <div className="space-y-2">
+                <Label htmlFor="item_type">Item Type *</Label>
+                <Select
+                  value={formData.item_type}
+                  onValueChange={(value: 'lost' | 'found') => setFormData({ ...formData, item_type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select item type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lost">Lost Item</SelectItem>
+                    <SelectItem value="found">Found Item</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Title */}
               <div className="space-y-2">
                 <Label htmlFor="title">Item Title *</Label>
