@@ -21,6 +21,16 @@ export default function SignUpPage() {
   const [fullName, setFullName] = useState('');
   const [showConfirmScreen, setShowConfirmScreen] = useState(false);
   const [signedUpEmail, setSignedUpEmail] = useState('');
+  const [retryAfter, setRetryAfter] = useState(0);
+
+  React.useEffect(() => {
+    if (retryAfter > 0) {
+      const timer = setInterval(() => {
+        setRetryAfter((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [retryAfter]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,11 +67,21 @@ export default function SignUpPage() {
       });
 
       if (signUpError) {
-        toast({
-          title: 'Error',
-          description: signUpError.message,
-          variant: 'destructive',
-        });
+        // Check for rate limit error (status 429)
+        if (signUpError.status === 429) {
+          setRetryAfter(60); // 60 seconds cooldown
+          toast({
+            title: 'Too Many Requests',
+            description: 'Please wait a minute before trying to sign up again.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Error',
+            description: signUpError.message,
+            variant: 'destructive',
+          });
+        }
       } else {
         // Show confirmation UI instructing the user to check their email
         setSignedUpEmail(email);
@@ -108,11 +128,19 @@ export default function SignUpPage() {
       });
 
       if (error) {
-        toast({
-          title: 'Error',
-          description: error.message,
-          variant: 'destructive',
-        });
+        if (error.status === 429) {
+          toast({
+            title: 'Too Many Requests',
+            description: 'Please wait a moment before resending the email.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Error',
+            description: error.message,
+            variant: 'destructive',
+          });
+        }
       } else {
         toast({
           title: 'Success',
@@ -249,9 +277,13 @@ export default function SignUpPage() {
               <Button
                 type="submit"
                 className="w-full bg-primary hover:bg-primary/90"
-                disabled={loading}
+                disabled={loading || retryAfter > 0}
               >
-                {loading ? 'Creating Account...' : 'Create Account'}
+                {loading
+                  ? 'Creating Account...'
+                  : retryAfter > 0
+                    ? `Please wait ${retryAfter}s`
+                    : 'Create Account'}
               </Button>
             </form>
 
