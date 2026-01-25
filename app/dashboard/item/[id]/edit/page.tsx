@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase/client'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
 import { useToast } from '@/hooks/use-toast'
 
@@ -100,55 +101,60 @@ export default function Page() {
     }
   }
 
-  if (loading) return <div className="p-8">Loading...</div>
+  if (loading) return <div className="min-h-[60vh] flex items-center justify-center">Loading...</div>
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Edit Item</h1>
-        <Link href={`/dashboard/item/${item?.id}`} className="text-sm text-primary hover:underline">Back</Link>
-      </div>
+      <Card>
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle>Edit Item</CardTitle>
+          <Link href={`/dashboard/item/${item?.id}`} className="text-sm text-muted-foreground hover:underline">Back</Link>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-sm text-muted-foreground mb-1">Title</label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
 
-      <form onSubmit={handleSave} className="space-y-4">
-        <div>
-          <label className="block text-sm text-muted-foreground mb-1">Title</label>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} />
-        </div>
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">Category</label>
+              <Input value={category} onChange={(e) => setCategory(e.target.value)} />
+            </div>
 
-        <div>
-          <label className="block text-sm text-muted-foreground mb-1">Category</label>
-          <Input value={category} onChange={(e) => setCategory(e.target.value)} />
-        </div>
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">Location</label>
+              <Input value={location} onChange={(e) => setLocation(e.target.value)} />
+            </div>
 
-        <div>
-          <label className="block text-sm text-muted-foreground mb-1">Location</label>
-          <Input value={location} onChange={(e) => setLocation(e.target.value)} />
-        </div>
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1">Type</label>
+              <select
+                value={itemType}
+                onChange={(e) => setItemType(e.target.value as 'lost' | 'found')}
+                className="border-input rounded-md px-3 py-2 w-full"
+              >
+                <option value="lost">Lost</option>
+                <option value="found">Found</option>
+              </select>
+            </div>
 
-        <div>
-          <label className="block text-sm text-muted-foreground mb-1">Type</label>
-          <select
-            value={itemType}
-            onChange={(e) => setItemType(e.target.value as 'lost' | 'found')}
-            className="border-input rounded-md px-3 py-2 w-full"
-          >
-            <option value="lost">Lost</option>
-            <option value="found">Found</option>
-          </select>
-        </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm text-muted-foreground mb-1">Description</label>
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+            </div>
 
-        <div>
-          <label className="block text-sm text-muted-foreground mb-1">Description</label>
-          <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
-        </div>
-
-        <div className="flex gap-2">
-          <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
-          <Link href={`/dashboard/item/${item?.id}`} className="ml-2">
-            <Button variant="ghost">Cancel</Button>
-          </Link>
-        </div>
-      </form>
+            <div className="md:col-span-2 flex items-center justify-end gap-3 pt-2">
+              <Link href={`/dashboard/item/${item?.id}`}>
+                <Button variant="ghost">Cancel</Button>
+              </Link>
+              <Button type="submit" disabled={saving} className="bg-primary">
+                {saving ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

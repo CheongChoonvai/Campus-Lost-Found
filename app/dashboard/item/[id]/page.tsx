@@ -9,8 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, MapPin, Calendar, MessageSquare, Trash2, Edit, User } from 'lucide-react';
 import Link from 'next/link';
-import Brand from '@/components/site/brand';
 import { formatDistanceToNow } from 'date-fns';
+import DeleteModal from '@/components/site/delete-modal';
 
 export default function ItemDetailPage() {
   const router = useRouter();
@@ -23,6 +23,7 @@ export default function ItemDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
   const [ownerName, setOwnerName] = useState<string | null>(null);
+  const [showDelete, setShowDelete] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,8 +73,10 @@ export default function ItemDetailPage() {
   }, []);
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this item?')) return;
+    setShowDelete(true);
+  };
 
+  const confirmDelete = async () => {
     setDeleting(true);
     try {
       const { error } = await supabase
@@ -87,6 +90,7 @@ export default function ItemDetailPage() {
         title: 'Success',
         description: 'Item deleted successfully',
       });
+      setShowDelete(false);
       router.push('/dashboard');
     } catch (error) {
       toast({
@@ -179,16 +183,7 @@ export default function ItemDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div>
-              <Brand />
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Header provided by app/dashboard/layout.tsx */}
 
       {/* Main Content */}
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
@@ -310,6 +305,12 @@ export default function ItemDetailPage() {
           </div>
         </div>
       </main>
+      <DeleteModal
+        open={showDelete}
+        onCancel={() => setShowDelete(false)}
+        onConfirm={confirmDelete}
+        loading={deleting}
+      />
     </div>
   );
 }

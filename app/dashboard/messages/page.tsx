@@ -1,17 +1,18 @@
-'use client';
+ 'use client';
 
-import React from "react"
+import React from 'react';
 
 import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Send, MessageCircle } from 'lucide-react';
-import Link from 'next/link';
-import Brand from '@/components/site/brand';
+import { Send, MessageCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface Contact {
@@ -362,32 +363,29 @@ export default function MessagesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div>
-              <Brand />
-            </div>
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+      {/* Header is provided by app/dashboard/layout.tsx */}
 
       {/* Main Content */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="py-4">
+          <Link href="/dashboard" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to dashboard
+          </Link>
+        </div>
+      </div>
+
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[600px]">
           {/* Conversations List */}
           <Card className="md:col-span-1 overflow-hidden flex flex-col">
             <CardHeader className="border-b">
-              <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="h-5 w-5" />
-                Conversations
+              <CardTitle className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="h-5 w-5" />
+                  Conversations
+                </div>
+                <Badge>{conversations.length}</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 overflow-y-auto p-0">

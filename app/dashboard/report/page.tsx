@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Upload } from 'lucide-react';
 import Link from 'next/link';
-import Brand from '@/components/site/brand';
 
 export default function ReportPage() {
   const router = useRouter();
@@ -149,16 +148,7 @@ export default function ReportPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div>
-              <Brand />
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Header provided by app/dashboard/layout.tsx */}
 
       {/* Main Content */}
       <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-8">

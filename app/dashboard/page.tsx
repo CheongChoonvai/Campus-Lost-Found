@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LogOut, Plus, Search, MessageCircle } from 'lucide-react';
-import Brand from '@/components/site/brand';
+import { Search } from 'lucide-react';
 import { ItemGrid } from '@/components/items/item-grid';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
@@ -110,6 +109,109 @@ export default function DashboardPage() {
     return () => clearTimeout(timer);
   }, [itemType, category, status, searchQuery]);
 
+  // Realtime updates: listen for INSERT/UPDATE/DELETE on `items` and merge changes
+  useEffect(() => {
+    if (!user) return;
+
+    const matchesFilters = (it: any) => {
+      if (status && it.status !== status) return false;
+      if (itemType !== 'all' && it.item_type !== itemType) return false;
+      if (category !== 'all' && it.category !== category) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        if (!((it.title || '').toLowerCase().includes(q) || (it.description || '').toLowerCase().includes(q))) return false;
+      }
+      return true;
+    };
+
+    const channel = supabase
+      .channel('items-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'items' },
+        async (payload: any) => {
+          const newItem = payload.new;
+          if (!matchesFilters(newItem)) return;
+
+          // fetch poster name if possible
+          try {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', newItem.user_id)
+              .single();
+            (newItem as any).posterName = profile?.full_name || null;
+          } catch (e) {
+            (newItem as any).posterName = null;
+          }
+
+          setItems((prev) => {
+            if (prev.some((p) => p.id === newItem.id)) return prev;
+            return [newItem, ...prev];
+          });
+
+          // show toast for others' posts
+          try {
+            if (user && newItem.user_id !== user.id) {
+              toast({
+                title: 'New item posted',
+                description: `${newItem.title || 'An item'} was posted`,
+              });
+            }
+          } catch (e) {
+            // ignore toast errors
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'items' },
+        async (payload: any) => {
+          const updated = payload.new;
+
+          // fetch poster name if missing
+          if (!updated.posterName && updated.user_id) {
+            try {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('id', updated.user_id)
+                .single();
+              (updated as any).posterName = profile?.full_name || null;
+            } catch (e) {
+              (updated as any).posterName = null;
+            }
+          }
+
+          setItems((prev) => {
+            const exists = prev.some((p) => p.id === updated.id);
+            const matches = matchesFilters(updated);
+            if (exists && !matches) return prev.filter((p) => p.id !== updated.id);
+            if (exists && matches) return prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p));
+            if (!exists && matches) return [updated, ...prev];
+            return prev;
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'items' },
+        (payload: any) => {
+          const oldItem = payload.old;
+          setItems((prev) => prev.filter((p) => p.id !== oldItem.id));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      try {
+        supabase.removeChannel(channel);
+      } catch (e) {
+        // ignore
+      }
+    };
+  }, [user, itemType, category, status, searchQuery]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
@@ -129,33 +231,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div>
-              <Brand />
-            </div>
-            <div className="flex items-center gap-4">
-              <Button asChild variant="outline">
-                <a href="/dashboard/messages">
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Messages
-                </a>
-              </Button>
-              <Button asChild>
-                <a href="/dashboard/report">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Report Item
-                </a>
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Header is provided by app/dashboard/layout.tsx */}
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
