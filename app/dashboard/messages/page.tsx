@@ -5,7 +5,7 @@ import React from 'react';
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +37,7 @@ interface Conversation {
 
 export default function MessagesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const [user, setUser] = useState<any>(null);
@@ -149,7 +150,15 @@ export default function MessagesPage() {
       setConversations(conversationList);
 
       // Also update selected conversation if it's in the list, to sync new messages
+      // OR if we have a URL param for userId
+      const targetUserId = searchParams.get('userId');
+      
       setSelectedConversation((prev) => {
+        if (targetUserId) {
+           const target = conversationList.find(c => c.otherId === targetUserId);
+           if (target) return target;
+        }
+
         if (!prev) return prev;
         const updated = conversationList.find(c => c.otherId === prev.otherId);
         if (updated) {

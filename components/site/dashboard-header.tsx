@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { LogOut, Plus, MessageCircle } from 'lucide-react';
+import { LogOut, Plus, MessageCircle, Inbox } from 'lucide-react';
 import Brand from '@/components/site/brand';
 
 export default function DashboardHeader() {
@@ -42,6 +42,13 @@ export default function DashboardHeader() {
               <Link href="/dashboard/messages" className="flex items-center">
                 <MessageCircle className="h-4 w-4 mr-2" />
                 Messages
+              </Link>
+            </Button>
+
+            <Button asChild variant="outline">
+              <Link href="/dashboard/my-items" className="flex items-center">
+                <Inbox className="h-4 w-4 mr-2" />
+                My Post
               </Link>
             </Button>
 
