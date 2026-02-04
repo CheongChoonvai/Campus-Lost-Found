@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button';
 import { MapPin, Calendar, ArrowRight, MessageSquare, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { supabase } from '@/lib/supabase/client';
+import { sendMessage, getConversations } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 interface Item {
@@ -43,30 +43,22 @@ export function ItemGrid({ items, currentUserId }: ItemGridProps) {
     setLoadingChatId(item.id);
 
     try {
-      // 1. Check if we already have a conversation for this item
-      const { data: existingContacts } = await supabase
-        .from('contacts')
-        .select('id')
-        .eq('item_id', item.id)
-        .or(`and(sender_id.eq.${currentUserId},recipient_id.eq.${item.user_id}),and(sender_id.eq.${item.user_id},recipient_id.eq.${currentUserId})`)
-        .limit(1);
+      // 1. Check if we already have a conversation for this item using API
+      const { conversations } = await getConversations();
+      const existingConversation = conversations.find(
+        (conv) => conv.otherId === item.user_id && 
+                  conv.messages.some((msg) => msg.item_id === item.id)
+      );
 
-      // 2. If no conversation, start one automatically
-      if (!existingContacts || existingContacts.length === 0) {
+      // 2. If no conversation, start one automatically using API
+      if (!existingConversation) {
         const initialMessage = `Hi, I'm interested in your ${item.item_type} item "${item.title}".`;
         
-        const { error } = await supabase
-          .from('contacts')
-          .insert([
-            {
-              item_id: item.id,
-              sender_id: currentUserId,
-              recipient_id: item.user_id,
-              message: initialMessage,
-            },
-          ]);
-
-        if (error) throw error;
+        await sendMessage({
+          item_id: item.id,
+          recipient_id: item.user_id,
+          message: initialMessage,
+        });
       }
 
       // 3. Redirect to messages page with the user selected

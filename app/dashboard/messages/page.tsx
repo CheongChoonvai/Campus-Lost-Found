@@ -25,7 +25,7 @@ interface Contact {
   created_at: string;
   read_at: string | null;
   item?: {
-    title: string;
+    title: string | null;
   };
 }
 
@@ -81,72 +81,8 @@ export default function MessagesPage() {
 
   const fetchConversations = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('*')
-        .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Fetch related item titles so we can show them in the conversation header
-      const uniqueItemIds = Array.from(new Set((data || []).map((c: any) => c.item_id).filter(Boolean)));
-      let itemMap = new Map<string, string>();
-      if (uniqueItemIds.length > 0) {
-        const { data: itemsData } = await supabase
-          .from('items')
-          .select('id, title')
-          .in('id', uniqueItemIds);
-        itemMap = new Map(((itemsData || []) as any[]).map(i => [i.id, i.title]));
-      }
-
-      // Group messages by conversation
-      const conversationMap = new Map<string, Contact[]>();
-      const otherUsers = new Map<string, string>();
-
-      for (const contact of data || []) {
-        // attach item title if available
-        (contact as any).item = { title: itemMap.get(contact.item_id) };
-        const otherId = contact.sender_id === userId ? contact.recipient_id : contact.sender_id;
-        const key = [userId, otherId].sort().join('_');
-
-        if (!conversationMap.has(key)) {
-          conversationMap.set(key, []);
-        }
-        conversationMap.get(key)!.push(contact);
-      }
-
-      // Fetch other user emails
-      const uniqueIds = Array.from(new Set(
-        (data || []).map((c: Contact) => c.sender_id === userId ? c.recipient_id : c.sender_id)
-      ));
-
-      // Try to fetch display names from a `profiles` table.
-      // `auth.users` is not exposed via PostgREST, so querying it will fail with 404.
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', uniqueIds);
-
-      const userMap = new Map<string, string>((profiles || []).map((u: any) => [u.id, u.full_name || 'Unknown']));
-
-      const conversationList: Conversation[] = Array.from(conversationMap.entries()).map(
-        ([key, messages]) => {
-          // sort messages oldest -> newest
-          const sorted = (messages || []).slice().sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
-          const otherId = sorted.some(m => m.sender_id === userId)
-            ? sorted.find(m => m.sender_id === userId)!.recipient_id
-            : sorted.find(m => m.recipient_id === userId)!.sender_id;
-
-          return {
-            otherId,
-            otherEmail: userMap.get(otherId) || 'Unknown',
-            messages: sorted,
-            lastMessage: sorted[sorted.length - 1],
-          };
-        }
-      );
+      // Use API function to get conversations
+      const { conversations: conversationList } = await getConversations();
 
       setConversations(conversationList);
 
