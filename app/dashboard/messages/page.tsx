@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { getConversations, sendMessage } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -295,16 +296,11 @@ export default function MessagesPage() {
     setMessageText('');
 
     try {
-      const { data, error } = await supabase.from('contacts').insert([
-        {
-          item_id: selectedConversation.messages[0].item_id,
-          sender_id: user.id,
-          recipient_id: selectedConversation.otherId,
-          message: msgContent,
-        },
-      ]).select().single();
-
-      if (error) throw error;
+      const { contact: data } = await sendMessage({
+        item_id: selectedConversation.messages[0].item_id,
+        recipient_id: selectedConversation.otherId,
+        message: msgContent,
+      });
 
       // Optimistically update the UI immediately
       if (data) {

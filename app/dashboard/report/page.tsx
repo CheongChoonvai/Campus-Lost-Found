@@ -4,6 +4,7 @@ import React from "react"
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { createItem, uploadFile } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -76,21 +77,8 @@ export default function ReportPage() {
 
     setUploading(true);
     try {
-      // POST the file to the server API that uses the service role key to upload securely
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: {
-          'x-user-id': user.id,
-          'x-file-name': file.name,
-          // content-type will be set automatically by the browser for Blobs when using body as file
-        },
-        body: file,
-      });
-
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Upload failed');
-
-      setPhotoUrl(json.publicUrl);
+      const { publicUrl } = await uploadFile(file, user.id);
+      setPhotoUrl(publicUrl);
       toast({ title: 'Success', description: 'Photo uploaded successfully' });
     } catch (err: any) {
       toast({ title: 'Upload failed', description: err?.message || 'Unknown error', variant: 'destructive' });
@@ -113,20 +101,14 @@ export default function ReportPage() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from('items').insert([
-        {
-          user_id: user.id,
-          title: formData.title,
-          description: formData.description,
-          category: formData.category,
-          location: formData.location,
-          item_type: formData.item_type,
-          photo_url: photoUrl || null,
-          status: 'active',
-        },
-      ]);
-
-      if (error) throw error;
+      await createItem({
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        location: formData.location,
+        item_type: formData.item_type,
+        photo_url: photoUrl || undefined,
+      });
 
       toast({
         title: 'Success',

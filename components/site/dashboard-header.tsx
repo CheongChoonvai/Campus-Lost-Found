@@ -1,17 +1,37 @@
 "use client";
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { LogOut, Plus, MessageCircle, Inbox } from 'lucide-react';
+import { LogOut, Plus, MessageCircle, Inbox, LogIn } from 'lucide-react';
 import Brand from '@/components/site/brand';
 
 export default function DashboardHeader() {
   const router = useRouter();
   const pathname = usePathname();
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
   const hideLogout = pathname?.startsWith('/dashboard/messages');
   const hideDashboard = pathname === '/dashboard' || pathname === '/dashboard/';
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      setLoading(false);
+    };
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -38,30 +58,45 @@ export default function DashboardHeader() {
               </Button>
             )}
 
-            <Button asChild variant="outline">
-              <Link href="/dashboard/messages" className="flex items-center">
-                <MessageCircle className="h-4 w-4 mr-2" />
-                Messages
-              </Link>
-            </Button>
+            {/* Show these only when logged in */}
+            {user && (
+              <>
+                <Button asChild variant="outline">
+                  <Link href="/dashboard/messages" className="flex items-center">
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    Messages
+                  </Link>
+                </Button>
 
-            <Button asChild variant="outline">
-              <Link href="/dashboard/my-items" className="flex items-center">
-                <Inbox className="h-4 w-4 mr-2" />
-                My Post
-              </Link>
-            </Button>
+                <Button asChild variant="outline">
+                  <Link href="/dashboard/my-items" className="flex items-center">
+                    <Inbox className="h-4 w-4 mr-2" />
+                    My Post
+                  </Link>
+                </Button>
 
-            <Button asChild>
-              <Link href="/dashboard/report" className="flex items-center">
-                <Plus className="h-4 w-4 mr-2" />
-                Report Item
-              </Link>
-            </Button>
+                <Button asChild>
+                  <Link href="/dashboard/report" className="flex items-center">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Report Item
+                  </Link>
+                </Button>
 
-            {!hideLogout && (
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4" />
+                {!hideLogout && (
+                  <Button variant="ghost" size="sm" onClick={handleLogout}>
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                )}
+              </>
+            )}
+
+            {/* Show login button when not logged in */}
+            {!loading && !user && (
+              <Button asChild>
+                <Link href="/auth/login" className="flex items-center">
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Sign In
+                </Link>
               </Button>
             )}
           </div>

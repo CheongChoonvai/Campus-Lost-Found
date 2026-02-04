@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { getItem, deleteItem, updateItem, sendMessage } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -37,28 +38,12 @@ export default function ItemDetailPage() {
         }
         setUser(user);
 
-        // Fetch item and profile in parallel for faster loading
-        const [itemResult, profileResult] = await Promise.all([
-          supabase.from('items').select('*').eq('id', params.id).single(),
-          supabase.from('profiles').select('id, full_name').eq('id', user.id).single()
-        ]);
-
-        if (itemResult.error) throw itemResult.error;
-        const data = itemResult.data;
+        // Fetch item using API
+        const { item: data, ownerName: fetchedOwnerName, isOwner: fetchedIsOwner } = await getItem(params.id as string);
+        
         setItem(data);
-        setIsOwner(data.user_id === user.id);
-
-        // Fetch owner profile name if different from current user
-        if (data.user_id && data.user_id !== user.id) {
-          const { data: ownerProfile } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', data.user_id)
-            .single();
-          setOwnerName(ownerProfile?.full_name || null);
-        } else if (data.user_id === user.id && profileResult.data) {
-          setOwnerName(profileResult.data.full_name || null);
-        }
+        setIsOwner(fetchedIsOwner);
+        setOwnerName(fetchedOwnerName);
       } catch (error) {
         console.error('Error:', error);
         toast({
@@ -82,12 +67,7 @@ export default function ItemDetailPage() {
   const confirmDelete = async () => {
     setDeleting(true);
     try {
-      const { error } = await supabase
-        .from('items')
-        .update({ status: 'deleted' })
-        .eq('id', params.id);
-
-      if (error) throw error;
+      await deleteItem(params.id as string);
 
       toast({
         title: 'Success',
@@ -113,30 +93,13 @@ export default function ItemDetailPage() {
     setContactLoading(true);
 
     try {
-      // 1. Check if we already have a conversation for this item
-      const { data: existingContacts } = await supabase
-        .from('contacts')
-        .select('id')
-        .eq('item_id', item.id)
-        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${item.user_id}),and(sender_id.eq.${item.user_id},recipient_id.eq.${user.id})`)
-        .limit(1);
-
-      // 2. If no conversation, start one automatically
-      if (!existingContacts || existingContacts.length === 0) {
-        const initial = `Hi — I'm interested in this item titled "${item.title}". Can we chat?`;
-        const { error } = await supabase
-          .from('contacts')
-          .insert([
-            {
-              item_id: item.id,
-              sender_id: user.id,
-              recipient_id: item.user_id,
-              message: initial,
-            },
-          ]);
-
-        if (error) throw error;
-      }
+      // Start a conversation with the item owner
+      const initial = `Hi — I'm interested in this item titled "${item.title}". Can we chat?`;
+      await sendMessage({
+        item_id: item.id,
+        recipient_id: item.user_id,
+        message: initial,
+      });
 
       router.push(`/dashboard/messages?userId=${item.user_id}`);
     } catch (err) {
@@ -153,12 +116,7 @@ export default function ItemDetailPage() {
     if (!item) return;
     try {
       const resolvedAt = new Date().toISOString();
-      const { error } = await supabase
-        .from('items')
-        .update({ status: 'resolved', resolved_at: resolvedAt })
-        .eq('id', item.id);
-
-      if (error) throw error;
+      await updateItem(item.id, { status: 'resolved', resolved_at: resolvedAt });
 
       setItem({ ...item, status: 'resolved', resolved_at: resolvedAt });
 

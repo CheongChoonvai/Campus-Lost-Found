@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { getItems, deleteItem } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -29,14 +30,8 @@ export default function MyItemsPage() {
         setUser(user);
         setLoading(true);
 
-        // Fetch only items posted by the current user
-        const { data, error } = await supabase
-          .from('items')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
+        // Fetch only items posted by the current user via API
+        const { items: data } = await getItems({ userId: user.id, status: 'active' });
         setItems(data || []);
       } catch (error) {
         console.error('Error:', error);
@@ -57,12 +52,7 @@ export default function MyItemsPage() {
     if (!confirm('Are you sure you want to delete this item?')) return;
 
     try {
-      const { error } = await supabase
-        .from('items')
-        .update({ status: 'deleted' })
-        .eq('id', itemId);
-
-      if (error) throw error;
+      await deleteItem(itemId);
 
       setItems(items.filter(item => item.id !== itemId));
       toast({

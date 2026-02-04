@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
+import { getItems, Item } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,12 +30,12 @@ export default function DashboardPage() {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push('/auth/login');
-      } else {
+      // Allow browsing without login - just set user if logged in
+      if (user) {
         setUser(user);
-        fetchItems();
       }
+      // Always fetch items regardless of auth status
+      fetchItems();
     };
 
     checkAuth();
@@ -43,52 +44,12 @@ export default function DashboardPage() {
   const fetchItems = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('items')
-        .select('*')
-        .eq('status', status)
-        .order('created_at', { ascending: false });
-
-      if (itemType !== 'all') {
-        query = query.eq('item_type', itemType);
-      }
-
-      if (category !== 'all') {
-        query = query.eq('category', category);
-      }
-
-      if (searchQuery) {
-        query = query.or(
-          `title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`
-        );
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      const itemsData = data || [];
-
-      // Fetch author display names from `profiles` table (if present)
-      const uniqueUserIds = Array.from(new Set(itemsData.map((it: any) => it.user_id)));
-      if (uniqueUserIds.length > 0) {
-        try {
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('id, full_name')
-            .in('id', uniqueUserIds);
-
-          const profileMap = new Map((profiles || []).map((p: any) => [p.id, p.full_name]));
-
-          // Attach posterName to items
-          for (const it of itemsData) {
-            it.posterName = profileMap.get(it.user_id) || null;
-          }
-        } catch (err) {
-          // ignore — profiles table may not exist yet
-          // eslint-disable-next-line no-console
-          console.warn('Could not load profiles:', err);
-        }
-      }
+      const { items: itemsData } = await getItems({
+        itemType,
+        category,
+        status,
+        search: searchQuery,
+      });
 
       setItems(itemsData);
     } catch (error) {
@@ -328,9 +289,15 @@ export default function DashboardPage() {
             <Card>
               <CardContent className="text-center py-12">
                 <p className="text-muted-foreground mb-4">No items found</p>
-                <Button asChild>
-                  <a href="/dashboard/report">Report a Lost or Found Item</a>
-                </Button>
+                {user ? (
+                  <Button asChild>
+                    <a href="/dashboard/report">Report a Lost or Found Item</a>
+                  </Button>
+                ) : (
+                  <Button asChild>
+                    <a href="/auth/login">Sign in to Report an Item</a>
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (

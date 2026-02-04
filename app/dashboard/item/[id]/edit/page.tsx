@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
+import { getItem, updateItem, uploadFile } from '@/lib/api'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -47,13 +48,8 @@ export default function Page() {
         }
         setUser(user)
 
-        const { data, error } = await supabase
-          .from('items')
-          .select('*')
-          .eq('id', id)
-          .single()
+        const { item: data, isOwner: fetchedIsOwner } = await getItem(id as string)
 
-        if (error) throw error
         setItem(data)
         setTitle(data.title || '')
         setCategory(data.category || '')
@@ -61,8 +57,8 @@ export default function Page() {
         setDescription(data.description || '')
         setItemType(data.item_type || 'lost')
         setPhotoUrl(data.photo_url || null)
-        setIsOwner(data.user_id === user.id)
-        if (data.user_id !== user.id) {
+        setIsOwner(fetchedIsOwner)
+        if (!fetchedIsOwner) {
           toast({ title: 'Forbidden', description: 'You are not the owner of this item', variant: 'destructive' })
           router.push('/dashboard')
           return
@@ -100,19 +96,8 @@ export default function Page() {
 
     setUploading(true);
     try {
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: {
-          'x-user-id': user.id,
-          'x-file-name': file.name,
-        },
-        body: file,
-      });
-
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Upload failed');
-
-      setPhotoUrl(json.publicUrl);
+      const { publicUrl } = await uploadFile(file, user.id);
+      setPhotoUrl(publicUrl);
       toast({ title: 'Success', description: 'Photo uploaded successfully' });
     } catch (err: any) {
       toast({ title: 'Upload failed', description: err?.message || 'Unknown error', variant: 'destructive' });
@@ -126,23 +111,22 @@ export default function Page() {
     if (!item) return
     setSaving(true)
     try {
-      const { error } = await supabase
-        .from('items')
-        .update({ title, category, location, description, item_type: itemType, photo_url: photoUrl })
-        .eq('id', item.id)
-
-      if (error) {
-        // Provide clearer message for forbidden (RLS) errors
-        if ((error as any).status === 403) {
-          toast({ title: 'Forbidden', description: 'You do not have permission to update this item', variant: 'destructive' })
-          return
-        }
-        throw error
-      }
+      await updateItem(item.id, {
+        title,
+        category,
+        location,
+        description,
+        item_type: itemType,
+        photo_url: photoUrl || undefined,
+      })
 
       toast({ title: 'Saved', description: 'Item updated successfully' })
       router.push(`/dashboard/item/${item.id}`)
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.message?.includes('Forbidden')) {
+        toast({ title: 'Forbidden', description: 'You do not have permission to update this item', variant: 'destructive' })
+        return
+      }
       console.error(err)
       toast({ title: 'Error', description: 'Failed to save item', variant: 'destructive' })
     } finally {

@@ -45,7 +45,7 @@ export default function LandingPage() {
                 Start Reporting
               </Button>
             </Link>
-            <Link href="/auth/login">
+            <Link href="/dashboard">
               <Button size="lg" variant="outline" className="w-full sm:w-auto bg-transparent">
                 Browse Items
               </Button>
