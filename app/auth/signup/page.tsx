@@ -23,10 +23,40 @@ export default function SignUpPage() {
   const [signedUpEmail, setSignedUpEmail] = useState('');
   const [retryAfter, setRetryAfter] = useState(0);
 
+  // Load cooldown from localStorage on mount (for both signup and resend)
+  React.useEffect(() => {
+    // Check both signup and resend cooldowns
+    const signupCooldown = localStorage.getItem('signup_cooldown');
+    const resendCooldown = localStorage.getItem('resend_cooldown');
+    
+    // Use whichever cooldown is longer
+    const cooldowns = [signupCooldown, resendCooldown].filter(Boolean).map(c => parseInt(c!, 10));
+    
+    if (cooldowns.length > 0) {
+      const maxCooldown = Math.max(...cooldowns);
+      const now = Date.now();
+      const remaining = Math.max(0, Math.floor((maxCooldown - now) / 1000));
+      
+      if (remaining > 0) {
+        setRetryAfter(remaining);
+      } else {
+        localStorage.removeItem('signup_cooldown');
+        localStorage.removeItem('resend_cooldown');
+      }
+    }
+  }, []);
+
   React.useEffect(() => {
     if (retryAfter > 0) {
       const timer = setInterval(() => {
-        setRetryAfter((prev) => prev - 1);
+        setRetryAfter((prev) => {
+          const newValue = prev - 1;
+          if (newValue <= 0) {
+            localStorage.removeItem('signup_cooldown');
+            localStorage.removeItem('resend_cooldown');
+          }
+          return newValue;
+        });
       }, 1000);
       return () => clearInterval(timer);
     }
@@ -69,10 +99,21 @@ export default function SignUpPage() {
       if (signUpError) {
         // Check for rate limit error (status 429)
         if (signUpError.status === 429) {
+          const cooldownEnd = Date.now() + 60000;
+          localStorage.setItem('signup_cooldown', cooldownEnd.toString());
           setRetryAfter(60); // 60 seconds cooldown
           toast({
             title: 'Too Many Requests',
-            description: 'Please wait a minute before trying to sign up again.',
+            description: 'Please wait 60 seconds before trying to sign up again.',
+            variant: 'destructive',
+          });
+        } else if (signUpError.message?.includes('User already registered')) {
+          // User already exists - show confirmation screen so they can resend
+          setSignedUpEmail(email);
+          setShowConfirmScreen(true);
+          toast({
+            title: 'Account Already Exists',
+            description: 'This email is already registered. Check your inbox for the confirmation email, or resend it below.',
             variant: 'destructive',
           });
         } else {
@@ -117,9 +158,12 @@ export default function SignUpPage() {
 
       if (error) {
         if (error.status === 429) {
+          const cooldownEnd = Date.now() + 60000; // 60 seconds from now
+          localStorage.setItem('resend_cooldown', cooldownEnd.toString());
+          setRetryAfter(60); // 60 seconds cooldown
           toast({
             title: 'Too Many Requests',
-            description: 'Please wait a moment before resending the email.',
+            description: 'You can resend again in 60 seconds. Please wait.',
             variant: 'destructive',
           });
         } else {
@@ -130,10 +174,13 @@ export default function SignUpPage() {
           });
         }
       } else {
+        const cooldownEnd = Date.now() + 60000; // 60 seconds from now
+        localStorage.setItem('resend_cooldown', cooldownEnd.toString());
         toast({
           title: 'Success',
           description: 'Confirmation email resent. Please check your inbox.',
         });
+        setRetryAfter(60); // Also set cooldown on success to prevent spamming
       }
     } catch (error) {
       toast({
@@ -169,9 +216,9 @@ export default function SignUpPage() {
                   className="w-full"
                   variant="outline"
                   onClick={handleResend}
-                  disabled={loading}
+                  disabled={loading || retryAfter > 0}
                 >
-                  {loading ? 'Resending...' : 'Resend confirmation instructions'}
+                  {loading ? 'Resending...' : retryAfter > 0 ? `Resend available in ${retryAfter}s` : 'Resend confirmation instructions'}
                 </Button>
 
                 <Button className="w-full" onClick={() => router.push('/auth/login')}>
