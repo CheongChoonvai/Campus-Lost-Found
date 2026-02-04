@@ -49,7 +49,37 @@ export async function GET(req: Request) {
       .select('id, full_name')
       .in('id', uniqueUserIds);
 
-    const userMap = new Map((profiles || []).map((u: any) => [u.id, u.full_name || 'Unknown']));
+    // Build initial map from profiles
+    const userMap = new Map<string, string>();
+    for (const profile of profiles || []) {
+      if (profile.full_name) {
+        userMap.set(profile.id, profile.full_name);
+      }
+    }
+
+    // For users without a full_name, try to get their email from auth.users
+    const usersWithoutName = uniqueUserIds.filter(id => !userMap.has(id));
+    if (usersWithoutName.length > 0) {
+      // Fetch emails from auth.users for users without profile names
+      for (const userId of usersWithoutName) {
+        try {
+          const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+          if (authUser?.user?.email) {
+            userMap.set(userId, authUser.user.email);
+          }
+        } catch (e) {
+          // ignore individual fetch errors
+          console.error(`Failed to fetch user ${userId}:`, e);
+        }
+      }
+    }
+
+    // Final fallback to 'Unknown' for any remaining users
+    for (const userId of uniqueUserIds) {
+      if (!userMap.has(userId)) {
+        userMap.set(userId, 'Unknown');
+      }
+    }
 
     // Group messages by conversation
     const conversationMap = new Map<string, any[]>();

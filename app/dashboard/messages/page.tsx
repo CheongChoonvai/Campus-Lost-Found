@@ -171,7 +171,7 @@ export default function MessagesPage() {
             .from('profiles')
             .select('full_name')
             .eq('id', otherId)
-            .single();
+            .maybeSingle();
           otherName = profile?.full_name || 'Unknown';
         } catch (e) {
           // ignore
@@ -192,10 +192,11 @@ export default function MessagesPage() {
             return prev.map((c) => (c.otherId === otherId ? updated : c));
           }
 
-          // New conversation
+          // New conversation - use existing name from prev if available, otherwise use fetched name
+          const existingName = prev.find(c => c.otherId === otherId)?.otherEmail;
           const conv: Conversation = {
             otherId,
-            otherEmail: otherName,
+            otherEmail: existingName || otherName,
             messages: [newMsg],
             lastMessage: newMsg,
           };

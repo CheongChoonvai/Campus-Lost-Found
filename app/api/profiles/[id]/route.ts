@@ -20,10 +20,14 @@ export async function GET(
       .from('profiles')
       .select('id, full_name')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
     return NextResponse.json({ profile: data });

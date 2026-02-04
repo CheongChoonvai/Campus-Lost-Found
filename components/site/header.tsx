@@ -18,7 +18,7 @@ export default function Header() {
           .from('profiles')
           .select('full_name')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
         const display = profile?.full_name || (user.email ?? null);
         if (mounted) setName(display);

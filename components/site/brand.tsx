@@ -13,7 +13,7 @@ export default function Brand() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
-        const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+        const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle();
         const display = profile?.full_name || user.email || null;
         if (mounted) setName(display);
       } catch (err) {

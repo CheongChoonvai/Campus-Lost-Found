@@ -33,7 +33,7 @@ export async function GET(
         .from('profiles')
         .select('full_name')
         .eq('id', data.user_id)
-        .single();
+        .maybeSingle();
       ownerName = profile?.full_name || null;
     }
 

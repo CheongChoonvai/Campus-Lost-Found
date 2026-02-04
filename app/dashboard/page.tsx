@@ -101,7 +101,7 @@ export default function DashboardPage() {
               .from('profiles')
               .select('full_name')
               .eq('id', newItem.user_id)
-              .single();
+              .maybeSingle();
             (newItem as any).posterName = profile?.full_name || null;
           } catch (e) {
             (newItem as any).posterName = null;
@@ -138,7 +138,7 @@ export default function DashboardPage() {
                 .from('profiles')
                 .select('full_name')
                 .eq('id', updated.user_id)
-                .single();
+                .maybeSingle();
               (updated as any).posterName = profile?.full_name || null;
             } catch (e) {
               (updated as any).posterName = null;
