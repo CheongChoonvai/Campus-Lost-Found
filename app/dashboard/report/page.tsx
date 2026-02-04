@@ -14,6 +14,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Upload } from 'lucide-react';
 import Link from 'next/link';
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { reportItemSchema, ReportItemFormValues } from "@/lib/schemas"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 
 export default function ReportPage() {
   const router = useRouter();
@@ -23,13 +34,16 @@ export default function ReportPage() {
   const [uploading, setUploading] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string>('');
 
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    category: '',
-    location: '',
-    item_type: 'lost' as 'lost' | 'found',
-  });
+  const form = useForm<ReportItemFormValues>({
+    resolver: zodResolver(reportItemSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      category: "",
+      location: "",
+      item_type: "lost",
+    },
+  })
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -87,26 +101,15 @@ export default function ReportPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.title || !formData.description || !formData.category || !formData.location || !formData.item_type) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in all required fields',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+  const onSubmit = async (data: ReportItemFormValues) => {
     setLoading(true);
     try {
       await createItem({
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        location: formData.location,
-        item_type: formData.item_type,
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        location: data.location,
+        item_type: data.item_type,
         photo_url: photoUrl || undefined,
       });
 
@@ -147,152 +150,180 @@ export default function ReportPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Item Type */}
-              <div className="space-y-2">
-                <Label htmlFor="item_type">Item Type *</Label>
-                <Select
-                  value={formData.item_type}
-                  onValueChange={(value: 'lost' | 'found') => setFormData({ ...formData, item_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select item type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="lost">Lost Item</SelectItem>
-                    <SelectItem value="found">Found Item</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Title */}
-              <div className="space-y-2">
-                <Label htmlFor="title">Item Title *</Label>
-                <Input
-                  id="title"
-                  placeholder="e.g., Black iPhone 14"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              {/* Description */}
-              <div className="space-y-2">
-                <Label htmlFor="description">Description *</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Describe the item in detail (color, condition, distinctive marks, etc.)"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  required
-                  disabled={loading}
-                  rows={4}
-                />
-              </div>
-
-              {/* Category */}
-              <div className="space-y-2">
-                <Label htmlFor="category">Category *</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Location */}
-              <div className="space-y-2">
-                <Label htmlFor="location">Location *</Label>
-                <Input
-                  id="location"
-                  placeholder="e.g., Library 3rd Floor, Dining Hall"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              {/* Photo Upload */}
-              <div className="space-y-2">
-                <Label>Photo (Optional)</Label>
-                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                  {photoUrl ? (
-                    <div className="space-y-4">
-                      <img
-                        src={photoUrl || "/placeholder.svg"}
-                        alt="Uploaded photo"
-                        className="max-h-40 mx-auto rounded"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPhotoUrl('')}
-                        disabled={uploading}
-                      >
-                        Change Photo
-                      </Button>
-                    </div>
-                  ) : (
-                    <div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoUpload}
-                        disabled={uploading}
-                        className="hidden"
-                        id="photo-input"
-                      />
-                      <label
-                        htmlFor="photo-input"
-                        className="cursor-pointer flex flex-col items-center gap-2"
-                      >
-                        <Upload className="h-8 w-8 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
-                          Click to upload or drag and drop
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          PNG, JPG, GIF up to 10MB
-                        </span>
-                      </label>
-                    </div>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {/* Item Type */}
+                <FormField
+                  control={form.control}
+                  name="item_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Item Type *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select item type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="lost">Lost Item</SelectItem>
+                          <SelectItem value="found">Found Item</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </div>
-              </div>
+                />
 
-              {/* Submit Button */}
-              <div className="flex gap-4">
-                <Button
-                  type="submit"
-                  className="flex-1 bg-primary hover:bg-primary/90"
-                  disabled={loading || uploading}
-                >
-                  {loading ? 'Reporting...' : 'Report Item'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1 bg-transparent"
-                  onClick={() => router.back()}
-                  disabled={loading || uploading}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
+                {/* Title */}
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Item Title *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Black iPhone 14" {...field} disabled={loading} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Description */}
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description *</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Describe the item in detail (color, condition, distinctive marks, etc.)"
+                          {...field}
+                          disabled={loading}
+                          rows={4}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Category */}
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories.map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                              {cat}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Location */}
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., Library 3rd Floor, Dining Hall"
+                          {...field}
+                          disabled={loading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Photo Upload */}
+                <div className="space-y-2">
+                  <Label>Photo (Optional)</Label>
+                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                    {photoUrl ? (
+                      <div className="space-y-4">
+                        <img
+                          src={photoUrl || "/placeholder.svg"}
+                          alt="Uploaded photo"
+                          className="max-h-40 mx-auto rounded"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPhotoUrl('')}
+                          disabled={uploading}
+                        >
+                          Change Photo
+                        </Button>
+                      </div>
+                    ) : (
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoUpload}
+                          disabled={uploading}
+                          className="hidden"
+                          id="photo-input"
+                        />
+                        <label
+                          htmlFor="photo-input"
+                          className="cursor-pointer flex flex-col items-center gap-2"
+                        >
+                          <Upload className="h-8 w-8 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">
+                            Click to upload or drag and drop
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            PNG, JPG, GIF up to 10MB
+                          </span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex gap-4">
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-primary hover:bg-primary/90"
+                    disabled={loading || uploading}
+                  >
+                    {loading ? 'Reporting...' : 'Report Item'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1 bg-transparent"
+                    onClick={() => router.back()}
+                    disabled={loading || uploading}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </Form>
           </CardContent>
         </Card>
       </main>

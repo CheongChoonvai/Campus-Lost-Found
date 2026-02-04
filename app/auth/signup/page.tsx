@@ -10,18 +10,36 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { signUpSchema, SignUpFormValues } from "@/lib/schemas"
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 
 export default function SignUpPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [showConfirmScreen, setShowConfirmScreen] = useState(false);
   const [signedUpEmail, setSignedUpEmail] = useState('');
   const [retryAfter, setRetryAfter] = useState(0);
+
+  const form = useForm<SignUpFormValues>({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      confirmPassword: "",
+      fullName: "",
+    },
+  })
 
   // Load cooldown from localStorage on mount (for both signup and resend)
   React.useEffect(() => {
@@ -62,36 +80,16 @@ export default function SignUpPage() {
     }
   }, [retryAfter]);
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (password !== confirmPassword) {
-      toast({
-        title: 'Error',
-        description: 'Passwords do not match',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (password.length < 8) {
-      toast({
-        title: 'Error',
-        description: 'Password must be at least 8 characters',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+  const onSubmit = async (data: SignUpFormValues) => {
     setLoading(true);
 
     try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
         options: {
           data: {
-            full_name: fullName,
+            full_name: data.fullName,
           },
         },
       });
@@ -109,7 +107,7 @@ export default function SignUpPage() {
           });
         } else if (signUpError.message?.includes('User already registered')) {
           // User already exists - show confirmation screen so they can resend
-          setSignedUpEmail(email);
+          setSignedUpEmail(data.email);
           setShowConfirmScreen(true);
           toast({
             title: 'Account Already Exists',
@@ -124,16 +122,30 @@ export default function SignUpPage() {
           });
         }
       } else {
-        // Show confirmation UI instructing the user to check their email
-        setSignedUpEmail(email);
-        setShowConfirmScreen(true);
-        toast({
-          title: 'Success',
-          description: 'Account created. Check your email to confirm your account.',
-        });
-        // Note: Profile creation is handled automatically by a database trigger
-        // (handle_auth_user_insert) that runs when the user is created in auth.users.
-        // The full_name is extracted from the user metadata we passed in options.data above.
+        // Check if user already exists (Supabase returns empty identities array for existing users)
+        const userAlreadyExists = authData?.user?.identities?.length === 0;
+        
+        if (userAlreadyExists) {
+          // User already exists - show a helpful message
+          setSignedUpEmail(data.email);
+          setShowConfirmScreen(true);
+          toast({
+            title: 'Email Already Registered',
+            description: 'This email may already be registered. Please check your inbox for a previous confirmation email, or try logging in.',
+            variant: 'destructive',
+          });
+        } else {
+          // New user created successfully
+          setSignedUpEmail(data.email);
+          setShowConfirmScreen(true);
+          toast({
+            title: 'Success',
+            description: 'Account created. Check your email to confirm your account.',
+          });
+          // Note: Profile creation is handled automatically by a database trigger
+          // (handle_auth_user_insert) that runs when the user is created in auth.users.
+          // The full_name is extracted from the user metadata we passed in options.data above.
+        }
       }
     } catch (error) {
       toast({
@@ -253,74 +265,80 @@ export default function SignUpPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSignUp} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="John Doe"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                  disabled={loading}
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="fullName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John Doe" {...field} disabled={loading} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@campus.edu"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={loading}
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="you@campus.edu" {...field} disabled={loading} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={loading}
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} disabled={loading} />
+                      </FormControl>
+                      <FormDescription>
+                        Must be at least 8 characters
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Must be at least 8 characters
-                </p>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  disabled={loading}
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} disabled={loading} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <Button
-                type="submit"
-                className="w-full bg-primary hover:bg-primary/90"
-                disabled={loading || retryAfter > 0}
-              >
-                {loading
-                  ? 'Creating Account...'
-                  : retryAfter > 0
-                    ? `Please wait ${retryAfter}s`
-                    : 'Create Account'}
-              </Button>
-            </form>
+                <Button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary/90"
+                  disabled={loading || retryAfter > 0}
+                >
+                  {loading
+                    ? 'Creating Account...'
+                    : retryAfter > 0
+                      ? `Please wait ${retryAfter}s`
+                      : 'Create Account'}
+                </Button>
+              </form>
+            </Form>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
