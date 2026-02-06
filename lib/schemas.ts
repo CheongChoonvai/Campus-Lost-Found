@@ -49,3 +49,31 @@ export const reportItemSchema = z.object({
 })
 
 export type ReportItemFormValues = z.infer<typeof reportItemSchema>
+
+export const profileSchema = z.object({
+  fullName: z.string().min(2, {
+    message: "Full name must be at least 2 characters.",
+  }),
+})
+
+export type ProfileFormValues = z.infer<typeof profileSchema>
+
+export const emailUpdateSchema = z.object({
+  email: z.string().email({
+    message: "Please enter a valid email address.",
+  }),
+})
+
+export type EmailUpdateFormValues = z.infer<typeof emailUpdateSchema>
+
+export const passwordUpdateSchema = z.object({
+  newPassword: z.string().min(8, {
+    message: "New password must be at least 8 characters.",
+  }),
+  confirmNewPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmNewPassword, {
+  message: "Passwords do not match",
+  path: ["confirmNewPassword"],
+})
+
+export type PasswordUpdateFormValues = z.infer<typeof passwordUpdateSchema>

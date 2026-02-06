@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { LogOut, Plus, MessageCircle, Inbox, LogIn } from 'lucide-react';
+import { LogOut, Plus, MessageCircle, Inbox, LogIn, User } from 'lucide-react';
 import Brand from '@/components/site/brand';
 
 export default function DashboardHeader() {
@@ -79,6 +79,12 @@ export default function DashboardHeader() {
                   <Link href="/dashboard/report" className="flex items-center">
                     <Plus className="h-4 w-4 mr-2" />
                     Report Item
+                  </Link>
+                </Button>
+
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/dashboard/profile" className="flex items-center">
+                    <User className="h-4 w-4" />
                   </Link>
                 </Button>
 
