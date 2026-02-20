@@ -28,6 +28,7 @@ export default function Page() {
   const [location, setLocation] = useState('')
   const [description, setDescription] = useState('')
   const [itemType, setItemType] = useState<'lost' | 'found'>('lost')
+  const [status, setStatus] = useState<'active' | 'resolved' | 'deleted'>('active')
   
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -56,6 +57,7 @@ export default function Page() {
         setLocation(data.location || '')
         setDescription(data.description || '')
         setItemType(data.item_type || 'lost')
+        setStatus(data.status || 'active')
         setPhotoUrl(data.photo_url || null)
         setIsOwner(fetchedIsOwner)
         if (!fetchedIsOwner) {
@@ -111,14 +113,26 @@ export default function Page() {
     if (!item) return
     setSaving(true)
     try {
-      await updateItem(item.id, {
+      const updates: any = {
         title,
         category,
         location,
         description,
         item_type: itemType,
         photo_url: photoUrl || undefined,
-      })
+        status,
+      }
+
+      // Manage resolved_at: set to now when marking resolved, clear when un-resolving
+      if (status === 'resolved') {
+        // if already has resolved_at keep it, otherwise set now
+        updates.resolved_at = item.resolved_at || new Date().toISOString()
+      } else {
+        // clear resolved_at when not resolved
+        updates.resolved_at = null
+      }
+
+      await updateItem(item.id, updates)
 
       toast({ title: 'Saved', description: 'Item updated successfully' })
       router.push(`/dashboard/item/${item.id}`)
@@ -214,6 +228,18 @@ export default function Page() {
                 >
                   <option value="lost">Lost</option>
                   <option value="found">Found</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Status</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as 'active' | 'resolved' | 'deleted')}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="active">Active</option>
+                  <option value="resolved">Resolved</option>
                 </select>
               </div>
 

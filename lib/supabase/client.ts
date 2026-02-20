@@ -27,11 +27,6 @@ let supabase: any;
 if (supabaseUrl && supabaseAnonKey) {
 	supabase = createClient(supabaseUrl, supabaseAnonKey);
 } else {
-	// Avoid throwing during module evaluation; provide a clear runtime error when used.
-	// This prevents Next from crashing at startup if envs are not loaded yet.
-	// Developers should restart the dev server after adding `.env` or set vars in their environment.
-	// Log a warning for visibility.
-	// eslint-disable-next-line no-console
 	console.warn('Supabase env vars missing: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
 	supabase = makeMissingClient();
 }

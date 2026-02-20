@@ -12,10 +12,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   profileSchema,
-  emailUpdateSchema,
   passwordUpdateSchema,
   ProfileFormValues,
-  EmailUpdateFormValues,
   PasswordUpdateFormValues,
 } from '@/lib/schemas';
 import {
@@ -37,7 +35,6 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [savingEmail, setSavingEmail] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -49,12 +46,7 @@ export default function ProfilePage() {
     },
   });
 
-  const emailForm = useForm<EmailUpdateFormValues>({
-    resolver: zodResolver(emailUpdateSchema),
-    defaultValues: {
-      email: '',
-    },
-  });
+
 
   const passwordForm = useForm<PasswordUpdateFormValues>({
     resolver: zodResolver(passwordUpdateSchema),
@@ -72,7 +64,6 @@ export default function ProfilePage() {
         return;
       }
       setUser(user);
-      emailForm.setValue('email', user.email || '');
       fetchProfile();
     };
     checkAuth();
@@ -136,42 +127,7 @@ export default function ProfilePage() {
     }
   };
 
-  const onEmailSubmit = async (values: EmailUpdateFormValues) => {
-    if (values.email === user?.email) {
-      toast({
-        title: 'No Changes',
-        description: 'The email address is the same as your current one.',
-        variant: 'destructive',
-      });
-      return;
-    }
 
-    setSavingEmail(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        email: values.email,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Check Your Inbox',
-        description: 'A confirmation link has been sent to your new email address.',
-      });
-    } catch (error: any) {
-      let message = error.message || 'Failed to update email';
-      if (error.message?.includes('already registered')) {
-        message = 'This email is already registered to another account.';
-      }
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
-    } finally {
-      setSavingEmail(false);
-    }
-  };
 
   const onPasswordSubmit = async (values: PasswordUpdateFormValues) => {
     setSavingPassword(true);
@@ -323,56 +279,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Email */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <Mail className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-base">Email Address</CardTitle>
-                <CardDescription className="text-xs">
-                  Used for login and notifications
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <Form {...emailForm}>
-              <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-4">
-                <FormField
-                  control={emailForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input type="email" placeholder="you@example.com" {...field} />
-                      </FormControl>
-                      <FormDescription className="text-xs">
-                        You&apos;ll receive a confirmation link at your new address before the change takes effect.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" disabled={savingEmail} size="sm">
-                  {savingEmail ? (
-                    <>
-                      <span className="animate-spin mr-2 h-3.5 w-3.5 border-2 border-current border-r-transparent rounded-full inline-block" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Mail className="h-4 w-4 mr-1.5" />
-                      Update Email
-                    </>
-                  )}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+        {/* Email block removed per request - email updates are hidden in UI */}
 
         {/* Password */}
         <Card>

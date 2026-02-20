@@ -16,15 +16,26 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const itemType = searchParams.get('itemType') || 'all';
     const category = searchParams.get('category') || 'all';
-    const status = searchParams.get('status') || 'active';
+    // If a status query param is provided we'll respect it. If no status is provided
+    // and the request is not scoped to a specific user, default to 'active'. If
+    // a `userId` is provided and no status is given, return all statuses for that
+    // user's items so they can see resolved/deleted items in their dashboard.
+    const status = searchParams.get('status');
     const search = searchParams.get('search') || '';
     const userId = searchParams.get('userId'); // For my-items page
 
-    let query = supabaseAdmin
-      .from('items')
-      .select('*')
-      .eq('status', status)
-      .order('created_at', { ascending: false });
+    let query = supabaseAdmin.from('items').select('*').order('created_at', { ascending: false });
+
+    // Apply status filter only when an explicit status is requested, or when
+    // there is no userId and no status provided (default to 'active' for public listing).
+    if (status) {
+      if (status !== 'all') {
+        query = query.eq('status', status);
+      }
+    } else if (!searchParams.get('userId')) {
+      // No status provided and this is not a user-scoped request -> show only active
+      query = query.eq('status', 'active');
+    }
 
     if (userId) {
       query = query.eq('user_id', userId);

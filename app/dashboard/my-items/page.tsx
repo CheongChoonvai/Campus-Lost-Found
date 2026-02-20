@@ -30,8 +30,9 @@ export default function MyItemsPage() {
         setUser(user);
         setLoading(true);
 
-        // Fetch only items posted by the current user via API
-        const { items: data } = await getItems({ userId: user.id, status: 'active' });
+        // Fetch items posted by the current user via API. Do not restrict by
+        // status so the user can see resolved items and edit their status again.
+        const { items: data } = await getItems({ userId: user.id });
         setItems(data || []);
       } catch (error) {
         console.error('Error:', error);
